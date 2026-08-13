@@ -1,0 +1,94 @@
+seed: 42
+
+module:
+  _target_: hlforge.BaseLightningModule
+  model:
+   _target_: hlforge.CompositeModel
+   backbone:
+    _target_: examples.pl_basics.hl_forge_modules.ex_01_mnist.backbone_image_classifier.Backbone
+    in_features: 784
+    hidden_dim: 128
+   head:
+    _target_: examples.pl_basics.hl_forge_modules.ex_01_mnist.backbone_image_classifier.ClassificationHead
+    in_features: 128
+    num_classes: 10
+  criterion:
+    _target_: torch.nn.CrossEntropyLoss
+  optimizer_config:
+    - optimizer:
+        _target_: torch.optim.Adam
+        _partial_: true
+        lr: 0.0001
+      lr_scheduler:
+        _target_: hlforge.core.configs.LRSchedulerConfig
+        scheduler:
+          _target_: torch.optim.lr_scheduler.StepLR
+          _partial_: true
+          step_size: 5
+          gamma: 0.5
+  train_metrics:
+    acc:
+      _target_: torchmetrics.classification.MulticlassAccuracy
+      num_classes: 10
+  val_metrics:
+    acc:
+      _target_: torchmetrics.classification.MulticlassAccuracy
+      num_classes: 10
+  test_metrics:
+    acc:
+      _target_: torchmetrics.classification.MulticlassAccuracy
+      num_classes: 10
+  log_config:
+    loss:
+      on_step: true
+      on_epoch: true
+      prog_bar: true
+      sync_dist: true
+    metrics:
+      on_step: false
+      on_epoch: true
+      prog_bar: true
+      sync_dist: true
+
+datamodule:
+  _target_: hlforge.BaseLightningDataModule
+  dataset:
+    _target_: torchvision.datasets.MNIST
+    root: "./data"
+    train: true
+    download: true
+  test_dataset:
+    _target_: torchvision.datasets.MNIST
+    root: "./data"
+    train: false
+    download: true
+  train_transform:
+    _target_: torchvision.transforms.ToTensor
+  val_transform:
+    _target_: torchvision.transforms.ToTensor
+  test_transform:
+    _target_: torchvision.transforms.ToTensor
+  data_splitter:
+    _target_: hlforge.RandomSplitter
+    val_fraction: 0.08333333333333333
+    seed: 42
+  batch_size: 32
+  num_workers: 0
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 3
+  accelerator: "auto"
+  devices: 1
+  enable_checkpointing: true
+  callbacks: 
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: "val/acc"
+      mode: "max"
+      save_top_k: 1
+      filename: "best-mnist-classifer-{epoch:02d}-{train_loss:.2f}"
+      dirpath: ${hydra:runtime.output_dir}/checkpoints
+  logger:
+    - _target_: pytorch_lightning.loggers.CSVLogger
+      save_dir: ${hydra:runtime.output_dir}
+      name: lightning_logs 

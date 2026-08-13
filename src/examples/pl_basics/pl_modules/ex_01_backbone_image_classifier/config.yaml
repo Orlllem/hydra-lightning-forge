@@ -1,0 +1,32 @@
+seed: 42
+
+module:
+  _target_: examples.pl_basics.raw_pl_modules.ex_01_backbone_image_classifier.backbone_image_classifier.LitClassifier
+  learning_rate: 0.001
+  backbone:
+    _target_: examples.pl_basics.raw_pl_modules.ex_01_backbone_image_classifier.backbone_image_classifier.Backbone
+    hidden_dim: 128
+
+datamodule:
+  _target_: examples.pl_basics.raw_pl_modules.ex_01_backbone_image_classifier.backbone_image_classifier.MyDataModule
+  data_dir: "./data"
+  batch_size: 32
+  num_workers: 0
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 1
+  accelerator: "auto"
+  devices: 1
+  enable_checkpointing: true
+  callbacks: 
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: "train_loss"
+      mode: "min"
+      save_top_k: 1
+      filename: "best-image-classifer-{epoch:02d}-{train_loss:.2f}"
+      dirpath: ${hydra:runtime.output_dir}/checkpoints
+  logger:
+    - _target_: pytorch_lightning.loggers.CSVLogger
+      save_dir: ${hydra:runtime.output_dir}
+      name: lightning_logs 

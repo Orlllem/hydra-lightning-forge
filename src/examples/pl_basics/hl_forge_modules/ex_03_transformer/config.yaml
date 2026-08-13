@@ -1,0 +1,53 @@
+seed: 42
+
+module:
+  _target_: examples.pl_basics.hl_forge_modules.ex_03_transformer.transformer.AutoTransformerModule
+  nhead: 2
+  nhid: 200
+  nlayers: 2
+  optimizer_config:
+    - optimizer:
+        _target_: torch.optim.SGD
+        _partial_: true
+        lr: 0.1
+  log_config:
+    loss:
+      on_step: true
+      on_epoch: true
+      prog_bar: true
+      sync_dist: true
+    metrics:
+      on_step: false
+      on_epoch: true
+      prog_bar: true
+      sync_dist: true
+
+datamodule:
+  _target_: examples.pl_basics.hl_forge_modules.ex_03_transformer.transformer.AutoTransformerDataModule
+  dataset:
+    _target_: pytorch_lightning.demos.WikiText2
+  data_splitter:
+    _target_: examples.pl_basics.hl_forge_modules.ex_03_transformer.transformer.RandomSplitter
+    val_size: 2000
+    test_size: 2000
+  batch_size: 32
+  num_workers: 0
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 1
+  accelerator: "auto"
+  devices: 1
+  enable_checkpointing: true
+  overfit_batches: 10
+  callbacks: 
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: "train_loss"
+      mode: "min"
+      save_top_k: 1
+      filename: "best-transformer-{epoch:02d}-{train_loss:.2f}"
+      dirpath: ${hydra:runtime.output_dir}/checkpoints
+  logger:
+    - _target_: pytorch_lightning.loggers.CSVLogger
+      save_dir: ${hydra:runtime.output_dir}
+      name: lightning_logs 

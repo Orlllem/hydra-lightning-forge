@@ -1,0 +1,42 @@
+seed: 42
+
+module:
+  _target_: examples.pl_basics.raw_pl_modules.ex_02_autoencoder.autoencoder.LitAutoEncoder
+  learning_rate: 0.001
+  encoder:
+    _target_: examples.pl_basics.raw_pl_modules.ex_02_autoencoder.autoencoder.Encoder
+    in_features: 784
+    hidden_dim: 64
+    latent_dim: 3
+  decoder:
+    _target_: examples.pl_basics.raw_pl_modules.ex_02_autoencoder.autoencoder.Decoder
+    latent_dim: 3
+    hidden_dim: 64
+    out_features: 784
+
+datamodule:
+  _target_: examples.pl_basics.raw_pl_modules.ex_02_autoencoder.autoencoder.MyDataModule
+  data_dir: "./data"
+  batch_size: 32
+  num_workers: 0
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 1
+  accelerator: "auto"
+  devices: 1
+  enable_checkpointing: true
+  callbacks: 
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: "train_loss"
+      mode: "min"
+      save_top_k: 1
+      filename: "best-autoencoder-{epoch:02d}-{train_loss:.2f}"
+      dirpath: ${hydra:runtime.output_dir}/checkpoints
+    - _target_: examples.pl_basics.raw_pl_modules.ex_02_autoencoder.autoencoder.ImageSampler
+      num_samples: 3
+      nrow: 8
+  logger:
+    - _target_: pytorch_lightning.loggers.CSVLogger
+      save_dir: ${hydra:runtime.output_dir}
+      name: lightning_logs 

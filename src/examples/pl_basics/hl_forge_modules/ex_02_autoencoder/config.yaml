@@ -1,0 +1,76 @@
+seed: 42
+
+module:
+  _target_: examples.pl_basics.hl_forge_modules.ex_02_autoencoder.autoencoder.AutoEncoderModule
+  model:
+    _target_: hlforge.core.module.CompositeModel
+    backbone:
+      _target_: examples.pl_basics.hl_forge_modules.ex_02_autoencoder.autoencoder.Encoder
+      in_features: 784
+      hidden_dim: 64
+      latent_dim: 3
+    head:
+      _target_: examples.pl_basics.hl_forge_modules.ex_02_autoencoder.autoencoder.Decoder
+      latent_dim: 3
+      hidden_dim: 64
+      out_features: 784
+  criterion:
+    _target_: torch.nn.MSELoss
+  loss_wrapper:
+    _target_: examples.pl_basics.hl_forge_modules.ex_02_autoencoder.autoencoder.MseLossWrapper
+  optimizer_config:
+    - optimizer:
+        _target_: torch.optim.Adam
+        _partial_: true
+        lr: 0.001
+  log_config:
+    loss:
+      on_step: true
+      on_epoch: true
+      prog_bar: true
+      sync_dist: true
+    metrics:
+      on_step: false
+      on_epoch: true
+      prog_bar: true
+      sync_dist: true
+
+datamodule:
+  _target_: hlforge.core.datamodule.BaseLightningDataModule
+  dataset:
+    _target_: torchvision.datasets.MNIST
+    root: "./data"
+    train: true
+    download: true
+    transform:
+      _target_: torchvision.transforms.ToTensor
+  test_dataset:
+    _target_: torchvision.datasets.MNIST
+    root: "./data"
+    train: false
+    download: true
+    transform:
+      _target_: torchvision.transforms.ToTensor
+  batch_size: 32
+  num_workers: 0
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 1
+  accelerator: "auto"
+  devices: 1
+  enable_checkpointing: true
+  callbacks: 
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: "train_loss"
+      mode: "min"
+      save_top_k: 1
+      filename: "best-autoencoder-{epoch:02d}-{train_loss:.2f}"
+      dirpath: ${hydra:runtime.output_dir}/checkpoints
+    - _target_: examples.pl_basics.hl_forge_modules.ex_02_autoencoder.autoencoder.ImageSampler
+      num_samples: 3
+      nrow: 8
+  logger:
+    - _target_: pytorch_lightning.loggers.CSVLogger
+      save_dir: ${hydra:runtime.output_dir}
+      name: lightning_logs
